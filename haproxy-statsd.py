@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
 usage: report_haproxy.py [-h] [-c CONFIG] [-1] [--excludeproxies]
 
