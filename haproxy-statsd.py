@@ -93,7 +93,6 @@ if __name__ == '__main__':
     config = default_config.copy()
     config.update(config_from_file)
 
-    pprint.pprint(config)
     # Generate statsd namespace
     namespace = config['statsd_namespace']
     if '(HOSTNAME)' in namespace:
