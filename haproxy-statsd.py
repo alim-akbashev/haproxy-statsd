@@ -32,13 +32,20 @@ from requests.auth import HTTPBasicAuth
 
 
 def get_haproxy_report(url, user=None, password=None):
+    if isinstance(url, str):
+        url = [url]
     auth = None
     if user:
         auth = HTTPBasicAuth(user, password)
-    r = requests.get(url, auth=auth)
-    r.raise_for_status()
-    data = r.content.lstrip('# ')
-    return csv.DictReader(data.splitlines())
+    aggregated = []
+    for u in url:
+        r = requests.get(u, auth=auth)
+        r.raise_for_status()
+        lines = r.content.splitlines()
+        header = lines.pop(0).lstrip('# ')
+        aggregated += lines
+    aggregated.insert(0, header)
+    return csv.DictReader(aggregated)
 
 
 def report_to_statsd(stat_rows,
