@@ -11,24 +11,22 @@ optional arguments:
   -1, --once        Run once and exit
   --excludeproxies  Exclude proxies, ie only show BACKEND & FRONTEND stats
 
-Config file format
-------------------
-[haproxy-statsd]
-haproxy_url = http://127.0.0.1:1936/;csv
-haproxy_user =
-haproxy_password =
-statsd_host = 127.0.0.1
-statsd_port = 8125
-statsd_namespace = haproxy.(HOSTNAME)
-interval = 5
+Config file format:
+---
+haproxy_url: "http://127.0.0.1:1936/;csv"
+haproxy_user:
+haproxy_password:
+statsd_host: "127.0.0.1"
+statsd_port: "8125"
+statsd_namespace: "haproxy.(HOSTNAME)"
+interval = "5"
 """
 
 import time
 import csv
 import socket
 import argparse
-import ConfigParser
-
+from yaml import load
 import requests
 from requests.auth import HTTPBasicAuth
 
@@ -71,7 +69,7 @@ if __name__ == '__main__':
         description='Report haproxy stats to statsd')
     parser.add_argument('-c', '--config',
                         help='Config file location',
-                        default='./haproxy-statsd.conf')
+                        default='./haproxy-statsd.yaml')
     parser.add_argument('-1', '--once',
                         action='store_true',
                         help='Run once and exit',
@@ -82,7 +80,7 @@ if __name__ == '__main__':
                         default=False)
 
     args = parser.parse_args()
-    config = ConfigParser.ConfigParser({
+    default_config = {
         'haproxy_url': 'http://127.0.0.1:1936/;csv',
         'haproxy_user': '',
         'haproxy_password': '',
@@ -90,29 +88,30 @@ if __name__ == '__main__':
         'statsd_host': '127.0.0.1',
         'statsd_port': '8125',
         'interval': '5',
-    })
-    config.add_section('haproxy-statsd')
-    config.read(args.config)
+    }
+    config_from_file = load(file(args.config, 'r'))
+    config = default_config.copy()
+    config.update(config_from_file)
 
     # Generate statsd namespace
-    namespace = config.get('haproxy-statsd', 'statsd_namespace')
+    namespace = config['statsd_namespace']
     if '(HOSTNAME)' in namespace:
         namespace = namespace.replace('(HOSTNAME)', socket.gethostname())
 
-    interval = config.getfloat('haproxy-statsd', 'interval')
+    interval = int(config['interval'])
 
     try:
         while True:
             report_data = get_haproxy_report(
-                config.get('haproxy-statsd', 'haproxy_url'),
-                user=config.get('haproxy-statsd', 'haproxy_user'),
-                password=config.get('haproxy-statsd', 'haproxy_password'))
+                config['haproxy_url'],
+                user=config['haproxy_user'],
+                password=config['haproxy_password'])
 
             report_num = report_to_statsd(
                 report_data,
                 namespace=namespace,
-                host=config.get('haproxy-statsd', 'statsd_host'),
-                port=config.getint('haproxy-statsd', 'statsd_port'),
+                host=config['statsd_host'],
+                port=int(config['statsd_port']),
                 excludeproxies=args.excludeproxies)
 
             print("Reported %s stats" % report_num)
