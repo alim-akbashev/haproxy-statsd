@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 """
-usage: report_haproxy.py [-h] [-c CONFIG] [-1]
+usage: report_haproxy.py [-h] [-c CONFIG] [-1] [--excludeproxies]
 
 Report haproxy stats to statsd
 
@@ -9,6 +9,7 @@ optional arguments:
   -c CONFIG, --config CONFIG
                         Config file location
   -1, --once        Run once and exit
+  --excludeproxies  Exclude proxies, ie only show BACKEND & FRONTEND stats
 
 Config file format
 ------------------
@@ -45,12 +46,15 @@ def get_haproxy_report(url, user=None, password=None):
 def report_to_statsd(stat_rows,
                      host='127.0.0.1',
                      port=8125,
-                     namespace='haproxy'):
+                     namespace='haproxy',
+                     excludeproxies=False):
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     stat_count = 0
 
     # Report for each row
     for row in stat_rows:
+        if not row['svname'] in [ 'BACKEND', 'FRONTEND' ] and excludeproxies:
+            continue
         path = '.'.join([namespace, row['pxname'], row['svname']])
 
         # Report each stat that we want in each row
@@ -71,6 +75,10 @@ if __name__ == '__main__':
     parser.add_argument('-1', '--once',
                         action='store_true',
                         help='Run once and exit',
+                        default=False)
+    parser.add_argument('--excludeproxies',
+                        action='store_true',
+                        help='Exclude proxies',
                         default=False)
 
     args = parser.parse_args()
@@ -104,7 +112,8 @@ if __name__ == '__main__':
                 report_data,
                 namespace=namespace,
                 host=config.get('haproxy-statsd', 'statsd_host'),
-                port=config.getint('haproxy-statsd', 'statsd_port'))
+                port=config.getint('haproxy-statsd', 'statsd_port'),
+                excludeproxies=args.excludeproxies)
 
             print("Reported %s stats" % report_num)
             if args.once:
