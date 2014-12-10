@@ -32,13 +32,20 @@ from requests.auth import HTTPBasicAuth
 
 
 def get_haproxy_report(url, user=None, password=None):
+    if isinstance(url, str):
+        url = [url]
     auth = None
     if user:
         auth = HTTPBasicAuth(user, password)
-    r = requests.get(url, auth=auth)
-    r.raise_for_status()
-    data = r.content.lstrip('# ')
-    return csv.DictReader(data.splitlines())
+    aggregated = []
+    for u in url:
+        r = requests.get(u, auth=auth)
+        r.raise_for_status()
+        lines = r.content.splitlines()
+        header = lines.pop(0).lstrip('# ')
+        aggregated += lines
+    aggregated.insert(0, header)
+    return csv.DictReader(aggregated)
 
 
 def report_to_statsd(stat_rows,
@@ -49,11 +56,15 @@ def report_to_statsd(stat_rows,
     udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     stat_count = 0
 
+    seen = {}
     # Report for each row
     for row in stat_rows:
         if not row['svname'] in [ 'BACKEND', 'FRONTEND' ] and excludeproxies:
             continue
+
         path = '.'.join([namespace, row['pxname'], row['svname']])
+        if path in seen:
+            continue
 
         # Report each stat that we want in each row
         for stat in ['scur', 'smax', 'ereq', 'econ', 'rate', 'bin', 'bout', 'hrsp_1xx', 'hrsp_2xx', 'hrsp_3xx', 'hrsp_4xx', 'hrsp_5xx', 'qtime', 'ctime', 'rtime', 'ttime']:
@@ -61,6 +72,9 @@ def report_to_statsd(stat_rows,
             udp_sock.sendto(
                 '%s.%s:%s|g' % (path, stat, val), (host, port))
             stat_count += 1
+
+        seen[path] = True
+
     return stat_count
 
 
