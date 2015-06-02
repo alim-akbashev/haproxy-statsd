@@ -67,7 +67,7 @@ def report_to_statsd(stat_rows,
             continue
 
         # Report each stat that we want in each row
-        for stat in ['scur', 'smax', 'ereq', 'econ', 'rate', 'bin', 'bout', 'hrsp_1xx', 'hrsp_2xx', 'hrsp_3xx', 'hrsp_4xx', 'hrsp_5xx', 'qtime', 'ctime', 'rtime', 'ttime']:
+        for stat in row:
             val = row.get(stat) or 0
             udp_sock.sendto(
                 '%s.%s:%s|g' % (path, stat, val), (host, port))
