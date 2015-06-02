@@ -1,3 +1,13 @@
+About this fork
+---------------
+- config in YAML (@btisdall), example haproxy-statsd.yaml.sample
+- support aggregating from multiple stats pages (@btisdall)
+- requirements.txt added
+
+Installation
+------------
+`pip install -r requirements.txt`
+
 haproxy-statsd
 --------------
 This script reports stats to statsd using [haproxy's](http://haproxy.1wt.eu/) stats interface. [See Stats Interface Demo](http://demo.1wt.eu/) ([CSV](http://demo.1wt.eu/;csv)).
